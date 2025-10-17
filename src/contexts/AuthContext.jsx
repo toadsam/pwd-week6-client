@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authApi } from '../services/authApi';
+import { authAPIService as authApi } from '../services/authApi';
 
 const AuthContext = createContext();
 
@@ -38,13 +38,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   // 로그인
-  const login = async (email, password) => {
+  const login = async (credentials) => {
     try {
-      const response = await authApi.login(email, password);
+      const response = await authApi.login(credentials);
       if (response.data.success) {
         setUser(response.data.user);
         setIsAuthenticated(true);
-        return { success: true };
+        return { success: true, message: response.data.message || '로그인 성공' };
       } else {
         return { success: false, message: response.data.message };
       }
@@ -54,13 +54,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   // 회원가입
-  const register = async (name, email, password) => {
+  const register = async (userData) => {
     try {
-      const response = await authApi.register(name, email, password);
+      const response = await authApi.register(userData);
       if (response.data.success) {
         setUser(response.data.user);
         setIsAuthenticated(true);
-        return { success: true };
+        return { success: true, message: response.data.message || '회원가입 성공' };
       } else {
         return { success: false, message: response.data.message };
       }
