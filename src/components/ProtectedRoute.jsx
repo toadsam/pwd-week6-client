@@ -25,11 +25,11 @@ const LoadingText = styled.p`
  * @param {string} props.redirectTo - 로그인되지 않은 경우 리다이렉트할 경로 (기본: '/login')
  */
 function ProtectedRoute({ children, redirectTo = '/login' }) {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
   // 인증 상태를 확인하는 중
-  if (loading) {
+  if (isLoading) {
     return (
       <LoadingContainer>
         <ClipLoader color="#667eea" size={50} />

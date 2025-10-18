@@ -3,10 +3,10 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const AdminRoute = ({ children }) => {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+  const { isAuthenticated, isAdmin, isLoading } = useAuth();
 
   // 로딩 중일 때
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>

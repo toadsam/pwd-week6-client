@@ -21,8 +21,11 @@ export const AuthProvider = ({ children }) => {
     try {
       setIsLoading(true);
       const response = await authApi.getCurrentUser();
-      if (response.data.success) {
-        setUser(response.data.user);
+      const data = response?.data ?? {};
+      const userFromResponse = data.user || data.data?.user || null;
+
+      if (userFromResponse) {
+        setUser(userFromResponse);
         setIsAuthenticated(true);
       } else {
         setUser(null);
@@ -41,13 +44,15 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await authApi.login(credentials);
-      if (response.data.success) {
-        setUser(response.data.user);
+      const data = response?.data ?? {};
+      const userFromResponse = data.user || data.data?.user || null;
+
+      if (userFromResponse) {
+        setUser(userFromResponse);
         setIsAuthenticated(true);
-        return { success: true, message: response.data.message || '로그인 성공' };
-      } else {
-        return { success: false, message: response.data.message };
+        return { success: true, message: data.message || '로그인 성공' };
       }
+      return { success: false, message: data.message || '로그인 실패' };
     } catch (error) {
       return { success: false, message: '로그인 중 오류가 발생했습니다.' };
     }
@@ -57,13 +62,15 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await authApi.register(userData);
-      if (response.data.success) {
-        setUser(response.data.user);
+      const data = response?.data ?? {};
+      const userFromResponse = data.user || data.data?.user || null;
+
+      if (userFromResponse) {
+        setUser(userFromResponse);
         setIsAuthenticated(true);
-        return { success: true, message: response.data.message || '회원가입 성공' };
-      } else {
-        return { success: false, message: response.data.message };
+        return { success: true, message: data.message || '회원가입 성공' };
       }
+      return { success: false, message: data.message || '회원가입 실패' };
     } catch (error) {
       return { success: false, message: '회원가입 중 오류가 발생했습니다.' };
     }
