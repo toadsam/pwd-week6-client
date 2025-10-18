@@ -1,428 +1,303 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from '@emotion/styled';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { restaurantAPI } from '../services/api';
-import { useForm } from 'react-hook-form';
+import { FaUser, FaEnvelope, FaCalendarAlt, FaShieldAlt, FaSignOutAlt, FaCog, FaClipboardList } from 'react-icons/fa';
+import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
-import { authAPIService } from '../services/authApi';
 
-const Container = styled.div`
-  padding: 2rem 0;
+const DashboardContainer = styled.div`
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
 `;
 
-const TabContainer = styled.div`
+const Welcome = styled.div`
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  text-align: center;
+  
+  h1 {
+    margin-bottom: 0.5rem;
+    font-size: 2rem;
+  }
+  
+  p {
+    opacity: 0.9;
+    font-size: 1.1rem;
+  }
+`;
+
+const UserCard = styled.div`
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   margin-bottom: 2rem;
 `;
 
-const TabButton = styled.button`
-  padding: 0.75rem 1.5rem;
-  border: none;
-  background: ${props => props.active ? '#667eea' : '#f5f5f5'};
-  color: ${props => props.active ? 'white' : '#333'};
-  cursor: pointer;
-  border-radius: 8px 8px 0 0;
-  margin-right: 0.5rem;
-  font-weight: 600;
-  
-  &:hover {
-    background: ${props => props.active ? '#5a67d8' : '#e0e0e0'};
-  }
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 2rem;
-`;
-
-const Panel = styled.div`
-  background: white;
-  border-radius: 12px;
-  padding: 1rem;
-`;
-
-const Title = styled.h2`
-  margin-bottom: 1rem;
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-  th, td { border-bottom: 1px solid #eee; padding: 0.5rem; text-align: left; }
-  th { background: #fafafa; }
-  tr:hover { background: #fafafa; }
-`;
-
-const Actions = styled.div`
+const CardTitle = styled.h2`
+  margin-bottom: 1.5rem;
+  color: #333;
   display: flex;
+  align-items: center;
   gap: 0.5rem;
 `;
 
-const Button = styled.button`
-  padding: 0.4rem 0.75rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: white;
-  cursor: pointer;
-  &:hover { background: #f5f5f5; }
-`;
-
-const Danger = styled(Button)`
-  color: #ff4757;
-  border-color: #ffb3ba;
-`;
-
-const FormRow = styled.div`
+const UserInfo = styled.div`
   display: grid;
-  grid-template-columns: 120px 1fr;
+  gap: 1rem;
+`;
+
+const InfoRow = styled.div`
+  display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 1rem;
+  background: #f8f9ff;
+  border-radius: 8px;
+  gap: 1rem;
+  
+  svg {
+    color: #667eea;
+    font-size: 1.2rem;
+  }
 `;
 
-const Input = styled.input`
-  width: 100%;
-  padding: 0.6rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+const InfoLabel = styled.span`
+  font-weight: 600;
+  color: #666;
+  min-width: 80px;
 `;
 
-const Textarea = styled.textarea`
-  width: 100%;
-  padding: 0.6rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  min-height: 80px;
-`;
-
-const Select = styled.select`
-  width: 100%;
-  padding: 0.6rem;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-`;
-
-// 사용자 유형 배지 스타일
-const UserTypeBadge = styled.span`
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  color: white;
-  background: ${props => props.isAdmin ? '#ff6b35' : '#667eea'};
+const InfoValue = styled.span`
+  color: #333;
+  flex: 1;
 `;
 
 const ProviderBadge = styled.span`
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
   background: ${props => {
     switch (props.provider) {
-      case 'google': return '#db4437';
-      case 'naver': return '#03c75a';
-      default: return '#667eea';
+      case 'google':
+        return '#db4437';
+      case 'naver':
+        return '#03c75a';
+      case 'admin':
+        return '#ff6b35';
+      default:
+        return '#667eea';
     }
   }};
+  color: white;
+  border-radius: 15px;
+  font-size: 0.875rem;
+  font-weight: 600;
 `;
 
-function AdminPage() {
-  const queryClient = useQueryClient();
-  const [selected, setSelected] = useState(null);
-  const [activeTab, setActiveTab] = useState('restaurants');
+const ActionButtons = styled.div`
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+`;
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['restaurants'],
-    queryFn: restaurantAPI.getRestaurants,
-  });
-
-  const { data: usersData, isLoading: usersLoading, error: usersError } = useQuery({
-    queryKey: ['users'],
-    queryFn: authAPIService.getAllUsers,
-    enabled: activeTab === 'users',
-    retry: 1,
-  });
-
-  const restaurants = data?.data || [];
-  const users = usersData?.data?.users || [];
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    formState: { isSubmitting },
-  } = useForm();
-
-  const createMutation = useMutation({
-    mutationFn: restaurantAPI.createRestaurant,
-    onSuccess: () => {
-      toast.success('생성 완료');
-      queryClient.invalidateQueries({ queryKey: ['restaurants'] });
-      reset();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }) => restaurantAPI.updateRestaurant(id, payload),
-    onSuccess: () => {
-      toast.success('수정 완료');
-      queryClient.invalidateQueries({ queryKey: ['restaurants'] });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id) => restaurantAPI.deleteRestaurant(id),
-    onSuccess: () => {
-      toast.info('삭제 완료');
-      queryClient.invalidateQueries({ queryKey: ['restaurants'] });
-      if (selected?.id) setSelected(null);
-    },
-  });
-
-  const changeUserTypeMutation = useMutation({
-    mutationFn: ({ userId, userType }) => authAPIService.changeUserType(userId, userType),
-    onSuccess: () => {
-      toast.success('사용자 유형이 변경되었습니다.');
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-
-  const onEdit = (row) => {
-    setSelected(row);
-    setValue('name', row.name);
-    setValue('category', row.category);
-    setValue('location', row.location);
-    setValue('priceRange', row.priceRange || '');
-    setValue('rating', row.rating ?? 0);
-    setValue('description', row.description || '');
-    setValue('recommendedMenu', (row.recommendedMenu || []).join(', '));
-    setValue('image', row.image || '');
-  };
-
-  const onResetForm = () => {
-    setSelected(null);
-    reset();
-  };
-
-  const onSubmit = async (form) => {
-    const recommendedMenu = typeof form.recommendedMenu === 'string'
-      ? form.recommendedMenu.split(/[\n,]/).map((s) => s.trim()).filter(Boolean)
-      : [];
-
-    const payload = {
-      name: form.name?.trim(),
-      category: form.category,
-      location: form.location?.trim(),
-      priceRange: form.priceRange?.trim() || undefined,
-      rating: form.rating !== '' && form.rating !== undefined ? Number(form.rating) : undefined,
-      description: form.description?.trim() || undefined,
-      recommendedMenu: recommendedMenu.length ? recommendedMenu : undefined,
-      image: form.image?.trim() || undefined,
-    };
-
-    if (selected?.id) {
-      await updateMutation.mutateAsync({ id: selected.id, payload });
-    } else {
-      await createMutation.mutateAsync(payload);
-    }
-  };
-
-  const onDelete = async (row) => {
-    if (!confirm(`[삭제] ${row.name}을(를) 삭제할까요?`)) return;
-    await deleteMutation.mutateAsync(row.id);
-  };
-
-  const onChangeUserType = async (user, newUserType) => {
-    const userTypeText = newUserType === 'admin' ? '관리자' : '일반 사용자';
-    if (!confirm(`${user.name}님의 유형을 ${userTypeText}로 변경할까요?`)) return;
+const ActionButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  
+  &.primary {
+    background: #667eea;
+    color: white;
     
-    try {
-      await changeUserTypeMutation.mutateAsync({ userId: user._id, userType: newUserType });
-    } catch (error) {
-      toast.error(error.userMessage || '사용자 유형 변경에 실패했습니다.');
+    &:hover {
+      background: #5a67d8;
     }
-  };
-
-  const categories = useMemo(() => ['한식','중식','일식','양식','아시안','분식','카페','기타'], []);
-
-  if (isLoading || usersLoading) {
-    return (
-      <Container>
-        <div style={{ textAlign: 'center', padding: '2rem' }}>
-          <div className="loading-spinner"></div>
-          <p>로딩 중...</p>
-        </div>
-      </Container>
-    );
   }
   
-  if (error || usersError) {
-    return (
-      <Container>
-        <div className="error-container">
-          <h2>오류가 발생했습니다</h2>
-          <p>{error?.message || usersError?.message}</p>
-        </div>
-      </Container>
-    );
+  &.danger {
+    background: #ff4757;
+    color: white;
+    
+    &:hover {
+      background: #ff3742;
+    }
+  }
+`;
+
+const UserAvatar = styled.img`
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin: 0 auto 1rem;
+  display: block;
+  border: 3px solid #667eea;
+`;
+
+const AvatarPlaceholder = styled.div`
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem;
+  font-size: 2rem;
+  font-weight: bold;
+  color: white;
+`;
+
+function DashboardPage() {
+  const { user, logout, isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    toast.success('로그아웃되었습니다.');
+    navigate('/', { replace: true });
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const getProviderDisplayName = (provider) => {
+    switch (provider) {
+      case 'google':
+        return '구글';
+      case 'naver':
+        return '네이버';
+      case 'local':
+        return '이메일';
+      default:
+        return provider;
+    }
+  };
+
+  if (!user) {
+    return <div>사용자 정보를 불러오는 중...</div>;
   }
 
   return (
-    <Container>
-      <Title>관리자 페이지</Title>
-      
-      <TabContainer>
-        <TabButton 
-          active={activeTab === 'restaurants'} 
-          onClick={() => setActiveTab('restaurants')}
-        >
-          레스토랑 관리
-        </TabButton>
-        <TabButton 
-          active={activeTab === 'users'} 
-          onClick={() => setActiveTab('users')}
-        >
-          사용자 관리
-        </TabButton>
-      </TabContainer>
+    <DashboardContainer>
+      <Welcome>
+        <h1>환영합니다, {user.name}님!</h1>
+        <p>Ajou Campus Foodmap에 오신 것을 환영합니다.</p>
+      </Welcome>
 
-      {activeTab === 'restaurants' && (
-        <Grid>
-        <Panel>
-          <Table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>이름</th>
-                <th>카테고리</th>
-                <th>평점</th>
-                <th>위치</th>
-                <th>액션</th>
-              </tr>
-            </thead>
-            <tbody>
-              {restaurants.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.id}</td>
-                  <td>{r.name}</td>
-                  <td>{r.category}</td>
-                  <td>{r.rating}</td>
-                  <td>{r.location}</td>
-                  <td>
-                    <Actions>
-                      <Button onClick={() => onEdit(r)}>수정</Button>
-                      <Danger onClick={() => onDelete(r)}>삭제</Danger>
-                    </Actions>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Panel>
+      <UserCard>
+        <CardTitle>
+          <FaUser /> 프로필 정보
+        </CardTitle>
+        
+        {user.avatar ? (
+          <UserAvatar src={user.avatar} alt={user.name} />
+        ) : (
+          <AvatarPlaceholder>
+            {user.name.charAt(0).toUpperCase()}
+          </AvatarPlaceholder>
+        )}
+        
+        <UserInfo>
+          <InfoRow>
+            <FaUser />
+            <InfoLabel>이름:</InfoLabel>
+            <InfoValue>{user.name}</InfoValue>
+          </InfoRow>
+          
+          <InfoRow>
+            <FaEnvelope />
+            <InfoLabel>이메일:</InfoLabel>
+            <InfoValue>{user.email}</InfoValue>
+          </InfoRow>
+          
+          <InfoRow>
+            <FaShieldAlt />
+            <InfoLabel>계정 종류:</InfoLabel>
+            <InfoValue>
+              <ProviderBadge provider={user.provider}>
+                {getProviderDisplayName(user.provider)} 계정
+              </ProviderBadge>
+            </InfoValue>
+          </InfoRow>
+          
+          <InfoRow>
+            <FaShieldAlt />
+            <InfoLabel>사용자 유형:</InfoLabel>
+            <InfoValue>
+              <ProviderBadge provider={user.userType === 'admin' ? 'admin' : 'user'}>
+                {user.userType === 'admin' ? '관리자' : '일반 사용자'}
+              </ProviderBadge>
+            </InfoValue>
+          </InfoRow>
+          
+          <InfoRow>
+            <FaCalendarAlt />
+            <InfoLabel>가입일:</InfoLabel>
+            <InfoValue>{formatDate(user.createdAt)}</InfoValue>
+          </InfoRow>
+        </UserInfo>
 
-        <Panel>
-          <h3>{selected ? `수정: ${selected.name}` : '새 레스토랑 추가'}</h3>
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <FormRow>
-              <label htmlFor="name">이름 *</label>
-              <Input id="name" {...register('name', { required: '이름은 필수입니다' })} />
-            </FormRow>
-            <FormRow>
-              <label htmlFor="category">카테고리 *</label>
-              <Select id="category" {...register('category', { required: '카테고리는 필수입니다' })}>
-                <option value="">선택</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </Select>
-            </FormRow>
-            <FormRow>
-              <label htmlFor="location">위치 *</label>
-              <Input id="location" {...register('location', { required: '위치는 필수입니다' })} />
-            </FormRow>
-            <FormRow>
-              <label htmlFor="priceRange">가격대</label>
-              <Input id="priceRange" {...register('priceRange')} />
-            </FormRow>
-            <FormRow>
-              <label htmlFor="rating">평점</label>
-              <Input id="rating" type="number" step="0.01" min="0" max="5" {...register('rating')} />
-            </FormRow>
-            <FormRow>
-              <label htmlFor="recommendedMenu">추천 메뉴</label>
-              <Textarea id="recommendedMenu" {...register('recommendedMenu')} placeholder="쉼표 또는 줄바꿈으로 구분" />
-            </FormRow>
-            <FormRow>
-              <label htmlFor="image">이미지 URL</label>
-              <Input id="image" {...register('image')} />
-            </FormRow>
-            <FormRow>
-              <label htmlFor="description">설명</label>
-              <Textarea id="description" {...register('description')} />
-            </FormRow>
-            <Actions>
-              <Button type="submit" disabled={isSubmitting}>{selected ? '수정' : '생성'}</Button>
-              <Button type="button" onClick={onResetForm}>초기화</Button>
-            </Actions>
-          </form>
-        </Panel>
-        </Grid>
-      )}
-
-      {activeTab === 'users' && (
-        <Panel>
-          <h3>사용자 목록</h3>
-          <Table>
-            <thead>
-              <tr>
-                <th>이름</th>
-                <th>이메일</th>
-                <th>계정 종류</th>
-                <th>사용자 유형</th>
-                <th>가입일</th>
-                <th>액션</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user._id}>
-                  <td>{user.name}</td>
-                  <td>{user.email}</td>
-                  <td>
-                    <ProviderBadge provider={user.provider}>
-                      {user.provider === 'google' ? '구글' : 
-                       user.provider === 'naver' ? '네이버' : '이메일'}
-                    </ProviderBadge>
-                  </td>
-                  <td>
-                    <UserTypeBadge isAdmin={user.userType === 'admin'}>
-                      {user.userType === 'admin' ? '관리자' : '일반 사용자'}
-                    </UserTypeBadge>
-                  </td>
-                  <td>{new Date(user.createdAt).toLocaleDateString('ko-KR')}</td>
-                  <td>
-                    <Actions>
-                      {user.userType === 'admin' ? (
-                        <Button onClick={() => onChangeUserType(user, 'user')}>
-                          일반 사용자로 변경
-                        </Button>
-                      ) : (
-                        <Button onClick={() => onChangeUserType(user, 'admin')}>
-                          관리자로 변경
-                        </Button>
-                      )}
-                    </Actions>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Panel>
-      )}
-    </Container>
+        <ActionButtons>
+          <ActionButton 
+            className="primary"
+            onClick={() => navigate('/list')}
+          >
+            맛집 둘러보기
+          </ActionButton>
+          
+          <ActionButton 
+            className="primary"
+            onClick={() => navigate('/submit')}
+          >
+            맛집 제보하기
+          </ActionButton>
+          
+          {isAdmin() && (
+            <>
+              <ActionButton 
+                className="primary"
+                onClick={() => navigate('/admin')}
+              >
+                <FaCog /> 관리자 페이지
+              </ActionButton>
+              
+              <ActionButton 
+                className="primary"
+                onClick={() => navigate('/submissions')}
+              >
+                <FaClipboardList /> 제출 관리
+              </ActionButton>
+            </>
+          )}
+          
+          <ActionButton 
+            className="danger"
+            onClick={handleLogout}
+          >
+            <FaSignOutAlt /> 로그아웃
+          </ActionButton>
+        </ActionButtons>
+      </UserCard>
+    </DashboardContainer>
   );
 }
 
-export default AdminPage;
-
+export default DashboardPage;
